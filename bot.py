@@ -76,7 +76,7 @@ def send_news():
 def send_market():
     bot.send_message(chat_id=CHAT_ID, text=market_status())
 
-if name == "__main__":
+if __name__ == "__main__":
     bot.send_message(chat_id=CHAT_ID, text="✅ ربات اخبار و هشدار کریپتو فعال شد.")
     scheduler = BlockingScheduler()
     scheduler.add_job(send_news, "interval", minutes=10)
