@@ -74,8 +74,8 @@ def send_market():
 if "lastPrice" not in data:
     continue
 
-price = float(data["lastPrice"])
-change = float(data["priceChangePercent"])
+        price = float(data["lastPrice"])
+        change = float(data["priceChangePercent"])
 
         text += f"🪙 {symbol}\n"
         text += f"قیمت: {price:,.2f}\n"
