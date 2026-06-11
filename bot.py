@@ -71,8 +71,11 @@ def send_market():
         url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}"
         data = requests.get(url, timeout=10).json()
 
-        price = float(data["lastPrice"])
-        change = float(data["priceChangePercent"])
+if "lastPrice" not in data:
+    continue
+
+price = float(data["lastPrice"])
+change = float(data["priceChangePercent"])
 
         text += f"🪙 {symbol}\n"
         text += f"قیمت: {price:,.2f}\n"
