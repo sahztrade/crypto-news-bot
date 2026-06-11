@@ -1,7 +1,8 @@
 import os
-import feedparser
+import threading
 import requests
-from telegram import Bot
+import feedparser
+from flask import Flask
 from apscheduler.schedulers.blocking import BlockingScheduler
 from dotenv import load_dotenv
 
@@ -10,7 +11,8 @@ load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-bot = Bot(token=BOT_TOKEN)
+app = Flask(__name__)
+sent_links = set()
 
 FEEDS = [
     "https://www.coindesk.com/arc/outboundfeeds/rss/?outputType=xml",
@@ -18,33 +20,21 @@ FEEDS = [
     "https://cryptoslate.com/feed/",
 ]
 
-sent_links = set()
+def telegram_send(text):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    requests.post(url, json={
+        "chat_id": CHAT_ID,
+        "text": text
+    }, timeout=15)
 
-def market_status():
-    symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"]
-    text = "📊 وضعیت بازار کریپتو\n\n"
-
-    for symbol in symbols:
-        url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}"
-        data = requests.get(url, timeout=10).json()
-        price = float(data["lastPrice"])
-        change = float(data["priceChangePercent"])
-        volume = float(data["quoteVolume"])
-
-        text += f"🪙 {symbol}\n"
-        text += f"قیمت: {price:,.2f}\n"
-        text += f"تغییر ۲۴ ساعته: {change:.2f}%\n"
-        text += f"حجم: {volume:,.0f}\n\n"
-
-    return text
+@app.route("/")
+def home():
+    return "Crypto bot is running ✅"
 
 def importance(title):
     t = title.lower()
-    alerts = ["sec", "etf", "hack", "exploit", "binance", "listing", "delisting", "fed", "lawsuit"]
-    for word in alerts:
-        if word in t:
-            return "🚨 هشدار مهم"
-    return "📰 خبر معمولی"
+    words = ["sec", "etf", "hack", "exploit", "binance", "listing", "delisting", "fed", "lawsuit"]
+    return "🚨 هشدار مهم" if any(w in t for w in words) else "📰 خبر کریپتو"
 
 def send_news():
     for feed_url in FEEDS:
@@ -62,23 +52,45 @@ def send_news():
             msg = f"""
 {importance(title)}
 
-🗞 خبر کریپتو:
+🗞 عنوان:
 {title}
 
-خلاصه فارسی:
-این خبر می‌تواند روی احساسات بازار و نوسانات کوتاه‌مدت اثر بگذارد. برای اسکالپ، بهتر است واکنش BTC و حجم معاملات بررسی شود.
+🇮🇷 خلاصه فارسی:
+این خبر می‌تواند روی احساسات بازار و نوسانات کوتاه‌مدت اثر بگذارد. برای اسکالپ، واکنش BTC، حجم معاملات و شکست سطوح مهم را بررسی کن.
 
 🔗 لینک:
 {link}
 """
-            bot.send_message(chat_id=CHAT_ID, text=msg)
+            telegram_send(msg)
 
 def send_market():
-    bot.send_message(chat_id=CHAT_ID, text=market_status())
+    symbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XRPUSDT"]
+    text = "📊 وضعیت بازار کریپتو\n\n"
 
-if __name__ == "__main__":
-    bot.send_message(chat_id=CHAT_ID, text="✅ ربات اخبار و هشدار کریپتو فعال شد.")
+    for symbol in symbols:
+        url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}"
+        data = requests.get(url, timeout=10).json()
+
+        price = float(data["lastPrice"])
+        change = float(data["priceChangePercent"])
+
+        text += f"🪙 {symbol}\n"
+        text += f"قیمت: {price:,.2f}\n"
+        text += f"تغییر ۲۴ ساعته: {change:.2f}%\n\n"
+
+    telegram_send(text)
+
+def run_scheduler():
+    telegram_send("✅ ربات اخبار و هشدار کریپتو فعال شد.")
+    send_news()
+    send_market()
+
     scheduler = BlockingScheduler()
     scheduler.add_job(send_news, "interval", minutes=10)
     scheduler.add_job(send_market, "interval", hours=1)
     scheduler.start()
+
+if name == "__main__":
+    threading.Thread(target=run_scheduler, daemon=True).start()
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port)
