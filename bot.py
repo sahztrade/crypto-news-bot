@@ -71,10 +71,6 @@ def send_market():
         url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}"
         data = requests.get(url, timeout=10).json()
 
-for symbol in symbols:
-    url = f"https://api.binance.com/api/v3/ticker/24hr?symbol={symbol}"
-    data = requests.get(url, timeout=10).json()
-
     if "lastPrice" not in data:
         continue
 
