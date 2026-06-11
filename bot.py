@@ -90,7 +90,7 @@ def run_scheduler():
     scheduler.add_job(send_market, "interval", hours=1)
     scheduler.start()
 
-if name == "__main__":
+if __name__ == "__main__":
     threading.Thread(target=run_scheduler, daemon=True).start()
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
